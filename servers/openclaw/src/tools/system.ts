@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as os from "node:os";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
+import { wrapTool } from "./tool-wrapper.js";
 
 const execAsync = promisify(exec);
 
@@ -10,7 +11,7 @@ export function registerSystemTools(server: McpServer): void {
     "get_system_info",
     "Get system information for the machine running OpenClaw and this MCP server",
     {},
-    async () => {
+    wrapTool(async () => {
       const totalMem = os.totalmem();
       const freeMem = os.freemem();
       const usedMem = totalMem - freeMem;
@@ -32,14 +33,14 @@ export function registerSystemTools(server: McpServer): void {
       return {
         content: [{ type: "text", text: lines.join("\n") }],
       };
-    }
+    })
   );
 
   server.tool(
     "restart_openclaw",
     "Restart the OpenClaw gateway process on the local machine",
     {},
-    async () => {
+    wrapTool(async () => {
       // Try PM2 first, then fallback to openclaw CLI
       try {
         const { stdout, stderr } = await execAsync("pm2 restart openclaw 2>&1", {
@@ -56,27 +57,20 @@ export function registerSystemTools(server: McpServer): void {
         };
       } catch {
         // PM2 not managing openclaw, try the openclaw CLI
-        try {
-          const { stdout, stderr } = await execAsync("openclaw restart 2>&1", {
-            timeout: 15_000,
-          });
-          const output = (stdout + stderr).trim();
-          return {
-            content: [
-              {
-                type: "text",
-                text: `OpenClaw restarted via CLI.\n\n${output}`,
-              },
-            ],
-          };
-        } catch (err2) {
-          const msg = err2 instanceof Error ? err2.message : String(err2);
-          throw new Error(
-            `Failed to restart OpenClaw. Tried PM2 and openclaw CLI.\n\nLast error: ${msg}\n\nHint: Make sure OpenClaw is managed by PM2 (pm2 start openclaw) or the 'openclaw' CLI is in PATH.`
-          );
-        }
+        const { stdout, stderr } = await execAsync("openclaw restart 2>&1", {
+          timeout: 15_000,
+        });
+        const output = (stdout + stderr).trim();
+        return {
+          content: [
+            {
+              type: "text",
+              text: `OpenClaw restarted via CLI.\n\n${output}`,
+            },
+          ],
+        };
       }
-    }
+    })
   );
 }
 

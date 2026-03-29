@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { OpenClawClient } from "../openclaw-client.js";
+import { wrapTool } from "./tool-wrapper.js";
 
 export function registerStatusTools(
   server: McpServer,
@@ -10,7 +11,7 @@ export function registerStatusTools(
     "get_status",
     "Check the OpenClaw gateway health, version, and uptime",
     {},
-    async () => {
+    wrapTool(async () => {
       const status = await client.getStatus();
       const lines: string[] = [`Status: ${status.status ?? "unknown"}`];
       if (status.version) lines.push(`Version: ${status.version}`);
@@ -24,7 +25,6 @@ export function registerStatusTools(
       if (status.activeConnections !== undefined) {
         lines.push(`Active connections: ${status.activeConnections}`);
       }
-      // Include any other fields
       const extra = Object.entries(status).filter(
         ([k]) => !["status", "version", "uptime", "activeConnections"].includes(k)
       );
@@ -34,7 +34,7 @@ export function registerStatusTools(
       return {
         content: [{ type: "text", text: lines.join("\n") }],
       };
-    }
+    })
   );
 
   server.tool(
@@ -54,7 +54,7 @@ export function registerStatusTools(
         .optional()
         .describe("Filter logs by level"),
     },
-    async ({ limit, level }) => {
+    wrapTool(async ({ limit, level }) => {
       const logs = await client.getLogs(limit ?? 50, level);
       if (logs.length === 0) {
         return {
@@ -71,6 +71,6 @@ export function registerStatusTools(
       return {
         content: [{ type: "text", text: formatted }],
       };
-    }
+    })
   );
 }

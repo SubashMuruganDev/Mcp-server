@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { OpenClawClient } from "../openclaw-client.js";
+import { wrapTool } from "./tool-wrapper.js";
 
 export function registerMessageTools(
   server: McpServer,
@@ -17,7 +18,7 @@ export function registerMessageTools(
         .default("main")
         .describe("Session ID (defaults to 'main')"),
     },
-    async ({ message, session_id }) => {
+    wrapTool(async ({ message, session_id }) => {
       const reply = await client.sendMessage(message, session_id ?? "main");
       return {
         content: [
@@ -30,7 +31,7 @@ export function registerMessageTools(
           },
         ],
       };
-    }
+    })
   );
 
   server.tool(
@@ -51,7 +52,7 @@ export function registerMessageTools(
         .default(20)
         .describe("Maximum number of messages to return (default: 20)"),
     },
-    async ({ session_id, limit }) => {
+    wrapTool(async ({ session_id, limit }) => {
       const messages = await client.getMessages(session_id ?? "main", limit ?? 20);
       if (messages.length === 0) {
         return {
@@ -67,14 +68,14 @@ export function registerMessageTools(
       return {
         content: [{ type: "text", text: formatted }],
       };
-    }
+    })
   );
 
   server.tool(
     "list_sessions",
     "List all active OpenClaw sessions",
     {},
-    async () => {
+    wrapTool(async () => {
       const sessions = await client.listSessions();
       if (sessions.length === 0) {
         return {
@@ -92,7 +93,7 @@ export function registerMessageTools(
           { type: "text", text: `Found ${sessions.length} session(s):\n\n${formatted}` },
         ],
       };
-    }
+    })
   );
 
   server.tool(
@@ -104,13 +105,13 @@ export function registerMessageTools(
         .min(1)
         .describe("ID of the session to delete"),
     },
-    async ({ session_id }) => {
+    wrapTool(async ({ session_id }) => {
       await client.deleteSession(session_id);
       return {
         content: [
           { type: "text", text: `Session '${session_id}' deleted successfully.` },
         ],
       };
-    }
+    })
   );
 }
