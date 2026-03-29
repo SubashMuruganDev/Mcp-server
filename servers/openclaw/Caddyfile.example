@@ -1,0 +1,28 @@
+# =============================================================================
+# Caddy reverse proxy configuration for OpenClaw MCP Server
+# =============================================================================
+# Prerequisites:
+#   1. Install Caddy: https://caddyserver.com/docs/install
+#   2. Point your domain's DNS A record to this machine's public IP
+#   3. Replace "your-domain.com" with your actual domain
+#   4. Run: caddy run --config Caddyfile
+#      Caddy will automatically obtain and renew a Let's Encrypt TLS certificate
+#
+# Alternative — Cloudflare Tunnel (no open ports needed):
+#   cloudflared tunnel --url http://localhost:3000
+# =============================================================================
+
+your-domain.com {
+    # Proxy all traffic to the local MCP server
+    reverse_proxy 127.0.0.1:3000
+
+    # Optional: restrict access to known Claude infrastructure IPs
+    # Uncomment and replace with actual IPs if needed
+    # @blocked not remote_ip 1.2.3.4 5.6.7.8
+    # respond @blocked "Forbidden" 403
+
+    # Logging
+    log {
+        output file /var/log/caddy/openclaw-mcp.log
+    }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "mcp-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monorepo of MCP servers",
+  "workspaces": [
+    "shared",
+    "servers/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "build:openclaw": "npm run build -w servers/openclaw"
+  }
+}
