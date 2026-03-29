@@ -92,21 +92,47 @@ export class OpenClawClient {
     }
   }
 
-  /** GET /api/status — public, no auth needed */
+  /**
+   * GET /health/stats — runtime statistics (uptime, memory, CPU, tokens, etc.)
+   * Falls back to GET /health for basic status.
+   */
   async getStatus(): Promise<OpenClawStatus> {
-    return this.request<OpenClawStatus>("GET", "/api/status", undefined, false);
+    try {
+      return await this.request<OpenClawStatus>(
+        "GET",
+        "/health/stats",
+        undefined,
+        false
+      );
+    } catch {
+      return this.request<OpenClawStatus>("GET", "/health", undefined, false);
+    }
   }
 
-  /** GET /api/sessions — list all active sessions */
+  /**
+   * List sessions via POST /tools/invoke with tool "sessions_list".
+   */
   async listSessions(): Promise<OpenClawSession[]> {
-    const result = await this.request<OpenClawSession[] | { sessions: OpenClawSession[] }>(
-      "GET",
-      "/api/sessions"
-    );
-    return Array.isArray(result) ? result : result.sessions ?? [];
+    const result = await this.request<
+      | OpenClawSession[]
+      | { sessions: OpenClawSession[] }
+      | { result: OpenClawSession[] }
+    >("POST", "/tools/invoke", {
+      tool: "sessions_list",
+      action: "json",
+      args: {},
+    });
+    if (Array.isArray(result)) return result;
+    if ("sessions" in result && Array.isArray(result.sessions))
+      return result.sessions;
+    if ("result" in result && Array.isArray(result.result)) return result.result;
+    return [];
   }
 
-  /** POST /api/sessions/{sessionId}/messages — send a message */
+  /**
+   * POST /api/sessions/{sessionKey}/messages — send a message to a session.
+   * Also supports the OpenAI-compatible endpoint POST /v1/chat/completions.
+   */
   async sendMessage(
     message: string,
     sessionId = "main"
@@ -118,45 +144,92 @@ export class OpenClawClient {
     );
   }
 
-  /** GET /api/sessions/{sessionId}/messages — get message history */
+  /**
+   * Get session history via POST /tools/invoke with tool "sessions_history".
+   */
   async getMessages(
     sessionId = "main",
     limit = 20
   ): Promise<OpenClawMessage[]> {
     const result = await this.request<
-      OpenClawMessage[] | { messages: OpenClawMessage[] }
-    >("GET", `/api/sessions/${encodeURIComponent(sessionId)}/messages?limit=${limit}`);
-    return Array.isArray(result) ? result : result.messages ?? [];
+      | OpenClawMessage[]
+      | { messages: OpenClawMessage[] }
+      | { result: OpenClawMessage[] }
+    >("POST", "/tools/invoke", {
+      tool: "sessions_history",
+      action: "json",
+      args: { sessionKey: sessionId, limit },
+    });
+    if (Array.isArray(result)) return result;
+    if ("messages" in result && Array.isArray(result.messages))
+      return result.messages;
+    if ("result" in result && Array.isArray(result.result)) return result.result;
+    return [];
   }
 
-  /** DELETE /api/sessions/{sessionId} — delete a session */
+  /**
+   * Delete a session via POST /tools/invoke with tool "sessions_delete".
+   */
   async deleteSession(sessionId: string): Promise<void> {
-    await this.request<unknown>(
-      "DELETE",
-      `/api/sessions/${encodeURIComponent(sessionId)}`
-    );
+    await this.request<unknown>("POST", "/tools/invoke", {
+      tool: "sessions_delete",
+      action: "json",
+      args: { sessionKey: sessionId },
+    });
   }
 
-  /** GET /api/logs — get recent logs */
-  async getLogs(limit = 50, level?: string): Promise<OpenClawLogEntry[]> {
-    const params = new URLSearchParams({ limit: String(limit) });
-    if (level) params.set("level", level);
+  /**
+   * GET /health/channels — per-channel statistics and connectivity.
+   * Used as the log source since OpenClaw has no dedicated HTTP log endpoint.
+   */
+  async getLogs(
+    limit = 50,
+    _level?: string
+  ): Promise<OpenClawLogEntry[]> {
+    // OpenClaw doesn't expose an HTTP log endpoint; use channel stats as status info
     const result = await this.request<
-      OpenClawLogEntry[] | { logs: OpenClawLogEntry[] }
-    >("GET", `/api/logs?${params}`);
-    return Array.isArray(result) ? result : result.logs ?? [];
+      | OpenClawLogEntry[]
+      | { channels: OpenClawLogEntry[] }
+      | Record<string, unknown>
+    >("GET", "/health/channels", undefined, false);
+
+    if (Array.isArray(result)) return result.slice(0, limit);
+    if ("channels" in result && Array.isArray(result.channels))
+      return result.channels.slice(0, limit);
+
+    // Flatten key/value pairs from the health response as log-like entries
+    return Object.entries(result)
+      .slice(0, limit)
+      .map(([k, v]) => ({
+        message: `${k}: ${JSON.stringify(v)}`,
+      }));
   }
 
-  /** GET /api/config — get configuration */
+  /**
+   * Get config via openclaw CLI (no HTTP endpoint for config in OpenClaw).
+   * Runs: openclaw config get [key]
+   */
   async getConfig(key?: string): Promise<OpenClawConfig> {
-    const path = key
-      ? `/api/config/${encodeURIComponent(key)}`
-      : "/api/config";
-    return this.request<OpenClawConfig>("GET", path);
+    const { execAsync } = await import("./exec-helper.js");
+    const cmd = key
+      ? `openclaw config get ${key}`
+      : "openclaw config list --json";
+    const { stdout } = await execAsync(cmd);
+    try {
+      return JSON.parse(stdout.trim()) as OpenClawConfig;
+    } catch {
+      return { output: stdout.trim() };
+    }
   }
 
-  /** POST /api/config — update a config value */
+  /**
+   * Update config via openclaw CLI: openclaw config set <key> <value>
+   */
   async updateConfig(key: string, value: string): Promise<OpenClawConfig> {
-    return this.request<OpenClawConfig>("POST", "/api/config", { key, value });
+    const { execAsync } = await import("./exec-helper.js");
+    const { stdout } = await execAsync(
+      `openclaw config set ${key} ${JSON.stringify(value)}`
+    );
+    return { output: stdout.trim(), key, value };
   }
 }
