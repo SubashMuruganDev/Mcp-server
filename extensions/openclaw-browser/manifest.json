@@ -9,8 +9,7 @@
     "scripting",
     "storage",
     "sidePanel",
-    "tabs",
-    "screenshots"
+    "tabs"
   ],
 
   "host_permissions": [
