@@ -462,20 +462,30 @@ async function saveSettings() {
 }
 
 async function testConnection() {
-  elConnStatus.textContent = 'Testing…';
+  elConnStatus.textContent = 'Connecting…';
   elConnStatus.className   = 'connection-status';
   try {
     const config = {
-      openclawUrl:   elInputUrl.value.trim(),
+      openclawUrl:   elInputUrl.value.trim() || 'http://localhost:18789',
       openclawToken: elInputToken.value.trim(),
     };
-    await bg('SAVE_CONFIG', { config });
     const result = await chrome.runtime.sendMessage({ type: 'TEST_CONNECTION', config });
     if (result?.error) throw new Error(result.error);
-    elConnStatus.textContent = 'Connected successfully!';
+
+    const info = result.status;
+    const label = info?.version
+      ? `Connected! OpenClaw v${info.version}`
+      : info?.status
+      ? `Connected! Status: ${info.status}`
+      : 'Connected successfully!';
+
+    elConnStatus.textContent = label;
     elConnStatus.className   = 'connection-status ok';
   } catch (err) {
-    elConnStatus.textContent = `Failed: ${err.message}`;
+    const msg = err.message.includes('Failed to fetch') || err.message.includes('NetworkError')
+      ? 'Cannot reach server. Is OpenClaw running on that URL?'
+      : `Failed: ${err.message}`;
+    elConnStatus.textContent = msg;
     elConnStatus.className   = 'connection-status fail';
   }
 }

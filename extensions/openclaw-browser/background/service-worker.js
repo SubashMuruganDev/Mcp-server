@@ -338,11 +338,12 @@ async function doSend(config, userText, fullText) {
 
   await chrome.storage.local.set({ sessionId });
 
+  // OpenClaw returns an OpenClawMessage: { role, content, id?, timestamp? }
   const reply =
+    response?.content ||
     response?.reply?.content ||
     response?.message?.content ||
-    response?.content ||
-    JSON.stringify(response);
+    (typeof response === 'string' ? response : JSON.stringify(response));
 
   await appendHistory({ role: 'user',      content: userText, timestamp: Date.now() });
   await appendHistory({ role: 'assistant', content: reply,    timestamp: Date.now() });
@@ -362,8 +363,9 @@ async function ensureSession(config) {
   const stored = await chrome.storage.local.get('sessionId');
   if (stored.sessionId) return stored.sessionId;
 
-  const response = await fetchOpenclaw(config, '/api/sessions', 'POST', {});
-  const sessionId = response?.sessionId || response?.id || crypto.randomUUID();
+  // OpenClaw uses "main" as the default session — no creation endpoint needed.
+  // We generate a unique ID per browser session so conversations stay separate.
+  const sessionId = 'ext-' + Date.now().toString(36);
   await chrome.storage.local.set({ sessionId });
   return sessionId;
 }
@@ -397,11 +399,12 @@ async function fetchOpenclaw(config, path, method = 'GET', body) {
 
 async function testConnection(config) {
   const cfg = config ?? (await getConfig());
-  if (!cfg.openclawToken) throw new Error('No token configured');
-  const url = `${cfg.openclawUrl.replace(/\/$/, '')}/health`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${cfg.openclawToken}` } });
+  // /api/status is public — no token required, perfect for a connectivity check
+  const url = `${cfg.openclawUrl.replace(/\/$/, '')}/api/status`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
   if (!res.ok) throw new Error(`Server returned ${res.status}`);
-  return { ok: true };
+  const body = await res.json().catch(() => ({}));
+  return { ok: true, status: body };
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────

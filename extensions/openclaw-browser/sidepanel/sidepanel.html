@@ -94,14 +94,22 @@
 
   <!-- Settings view -->
   <div id="view-settings" class="view hidden settings-view">
-    <h3 class="settings-title">Settings</h3>
+    <h3 class="settings-title">Connect to OpenClaw</h3>
 
-    <label class="field-label">OpenClaw Server URL</label>
+    <div class="settings-help">
+      <p>Point this to your local OpenClaw API server — <strong>not</strong> the MCP server.</p>
+    </div>
+
+    <label class="field-label">OpenClaw API URL
+      <span class="field-hint">Default port is 18789</span>
+    </label>
     <input id="input-url" class="field-input" type="url" placeholder="http://localhost:18789" />
 
-    <label class="field-label">API Token</label>
+    <label class="field-label">API Token
+      <span class="field-hint">Value of OPENCLAW_TOKEN in your .env</span>
+    </label>
     <div class="token-row">
-      <input id="input-token" class="field-input" type="password" placeholder="Bearer token" />
+      <input id="input-token" class="field-input" type="password" placeholder="Paste your OPENCLAW_TOKEN here" />
       <button id="btn-toggle-token" class="icon-btn small" title="Show/hide token">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
@@ -115,6 +123,18 @@
       <button id="btn-save-settings" class="btn-primary">Save</button>
     </div>
     <p id="connection-status" class="connection-status"></p>
+
+    <div class="settings-divider"></div>
+
+    <details class="settings-help-detail">
+      <summary>Where do I find these values?</summary>
+      <ol class="help-steps">
+        <li>Open <code>servers/openclaw/.env</code></li>
+        <li>Copy <code>OPENCLAW_TOKEN</code> value → paste above</li>
+        <li>The URL is <code>OPENCLAW_BASE_URL</code> (default: <code>http://localhost:18789</code>)</li>
+        <li>Make sure OpenClaw is running: <code>npm run start</code></li>
+      </ol>
+    </details>
 
     <button id="btn-back" class="btn-link">← Back to chat</button>
   </div>

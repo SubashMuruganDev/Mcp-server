@@ -356,6 +356,64 @@ html, body {
 .connection-status.ok   { color: var(--success); }
 .connection-status.fail { color: var(--error); }
 
+.settings-help {
+  background: rgba(108,99,255,0.08);
+  border: 1px solid rgba(108,99,255,0.2);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.settings-help strong { color: var(--text); }
+
+.field-hint {
+  font-weight: 400;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 10px;
+  margin-left: 4px;
+}
+
+.settings-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 16px 0 10px;
+}
+
+.settings-help-detail {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.settings-help-detail summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 2px 0;
+  list-style: none;
+}
+.settings-help-detail summary::-webkit-details-marker { display: none; }
+.settings-help-detail summary::before {
+  content: '▶ ';
+  font-size: 9px;
+}
+.settings-help-detail[open] summary::before { content: '▼ '; }
+
+.help-steps {
+  margin: 8px 0 0 14px;
+  line-height: 1.8;
+}
+.help-steps code {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: #a78bfa;
+}
+
 /* ── Input area ─────────────────────────────────────────────────────────── */
 .input-area {
   border-top: 1px solid var(--border);
